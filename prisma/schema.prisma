@@ -1,0 +1,157 @@
+// Implementation Portal - data model
+// Designed around: Organizations, Users, Projects, ChecklistTemplates,
+// ProjectChecklistItems (instances), and a tamper-evident AuditLog.
+//
+// Enum-like fields are stored as strings (kept that way for portability and to
+// avoid migrations on enum value additions). Allowed values are validated in
+// the application layer via Zod (see src/lib/types.ts and src/lib/validation.ts)
+// and documented inline below.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Tenancy
+// ─────────────────────────────────────────────────────────────
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  /// One of: VENDOR, CUSTOMER
+  type      String
+  createdAt DateTime @default(now())
+
+  users    User[]
+  projects Project[] @relation("CustomerProjects")
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String
+  passwordHash   String
+  /// One of: OWNER, IMPLEMENTER, CUSTOMER_ADMIN, CUSTOMER_USER, VIEWER
+  role           String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  lastLoginAt    DateTime?
+
+  ownedProjects   Project[]              @relation("ProjectOwner")
+  assignedItems   ProjectChecklistItem[] @relation("ItemAssignee")
+  completedItems  ProjectChecklistItem[] @relation("ItemCompleter")
+  auditEvents     AuditLog[]
+
+  @@index([organizationId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Templates - reusable implementation playbooks
+// ─────────────────────────────────────────────────────────────
+
+model ChecklistTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  items    ChecklistTemplateItem[]
+  projects Project[]
+}
+
+model ChecklistTemplateItem {
+  id           String   @id @default(cuid())
+  templateId   String
+  template     ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  order        Int
+  title        String
+  description  String?
+  /// One of: INFO, TASK, FORM, UPLOAD, APPROVAL
+  kind         String   @default("TASK")
+  /// Optional minimum role required to complete this step.
+  /// One of: OWNER, IMPLEMENTER, CUSTOMER_ADMIN, CUSTOMER_USER, VIEWER (or null)
+  requiredRole String?
+
+  projectItems ProjectChecklistItem[]
+
+  @@unique([templateId, order])
+  @@index([templateId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Projects - a customer's instantiated implementation
+// ─────────────────────────────────────────────────────────────
+
+model Project {
+  id            String        @id @default(cuid())
+  name          String
+  /// One of: DRAFT, ACTIVE, ON_HOLD, COMPLETED, ARCHIVED
+  status        String        @default("DRAFT")
+  customerOrgId String
+  customerOrg   Organization  @relation("CustomerProjects", fields: [customerOrgId], references: [id])
+  ownerId       String
+  owner         User          @relation("ProjectOwner", fields: [ownerId], references: [id])
+  templateId    String
+  template      ChecklistTemplate @relation(fields: [templateId], references: [id])
+  startDate     DateTime?
+  targetDate    DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  items ProjectChecklistItem[]
+
+  @@index([customerOrgId])
+  @@index([ownerId])
+}
+
+model ProjectChecklistItem {
+  id             String   @id @default(cuid())
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  templateItemId String
+  templateItem   ChecklistTemplateItem @relation(fields: [templateItemId], references: [id])
+  order          Int
+  /// One of: PENDING, IN_PROGRESS, BLOCKED, COMPLETED, SKIPPED
+  status         String     @default("PENDING")
+  assignedToId   String?
+  assignedTo     User?      @relation("ItemAssignee", fields: [assignedToId], references: [id])
+  completedById  String?
+  completedBy    User?      @relation("ItemCompleter", fields: [completedById], references: [id])
+  completedAt    DateTime?
+  payload        String?    // JSON-encoded structured response, when kind = FORM/UPLOAD
+  notes          String?
+  updatedAt      DateTime   @updatedAt
+
+  @@unique([projectId, templateItemId])
+  @@index([projectId, order])
+  @@index([assignedToId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Audit log - append-only record for compliance
+// ─────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  occurredAt   DateTime @default(now())
+  actorId      String?
+  actor        User?    @relation(fields: [actorId], references: [id])
+  actorEmail   String?  // Snapshot at time of event (survives user deletion)
+  action       String   // e.g. "USER_LOGIN", "ITEM_COMPLETED"
+  resourceType String   // e.g. "Project", "ProjectChecklistItem"
+  resourceId   String?
+  ipAddress    String?
+  userAgent    String?
+  metadata     String?  // JSON-encoded extra context
+
+  @@index([occurredAt])
+  @@index([actorId])
+  @@index([resourceType, resourceId])
+}
