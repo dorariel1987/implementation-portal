@@ -6,7 +6,8 @@ import {
   CircleDashed,
   Lock,
   PauseCircle,
-  ArrowLeft
+  ArrowLeft,
+  ArrowRight
 } from 'lucide-react';
 import { db } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
@@ -17,12 +18,10 @@ import {
   ItemStatusBadge,
   ProjectStatusBadge
 } from '@/components/StatusBadge';
-import {
-  formatDate,
-  ITEM_KIND_LABEL,
-  progressPercent,
-  STATUS_LABEL
-} from '@/lib/format';
+import { formatDate, itemKindLabel, progressPercent, statusLabel } from '@/lib/format';
+import { getServerDictionary } from '@/lib/i18n/server';
+import { direction } from '@/lib/i18n/config';
+
 const STATUS_ICON: Record<string, JSX.Element> = {
   PENDING: <Circle size={18} className="text-slate-400" />,
   IN_PROGRESS: <CircleDashed size={18} className="text-amber-500" />,
@@ -37,6 +36,11 @@ export default async function ProjectPage({
   params: { id: string };
 }) {
   const user = await requireUser();
+  const { locale, t } = getServerDictionary();
+  const isRtl = direction(locale) === 'rtl';
+  const BackArrow = isRtl ? ArrowRight : ArrowLeft;
+  const ForwardArrow = isRtl ? ArrowLeft : ArrowRight;
+
   const project = await db.project.findUnique({
     where: { id: params.id },
     include: {
@@ -60,7 +64,6 @@ export default async function ProjectPage({
   ).length;
   const pct = progressPercent(completed, project.items.length);
 
-  // Find the next actionable item the user can complete
   const firstActionable = project.items.find(
     (i) =>
       i.status !== 'COMPLETED' &&
@@ -74,33 +77,33 @@ export default async function ProjectPage({
         href="/dashboard"
         className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900"
       >
-        <ArrowLeft size={14} />
-        חזרה ללוח הבקרה
+        <BackArrow size={14} />
+        {t.common.backToDashboard}
       </Link>
 
       <Card>
         <CardHeader className="flex-col items-start gap-4 sm:flex-row sm:items-center">
           <div className="space-y-1">
             <div className="text-xs text-slate-500">
-              {project.customerOrg.name} · תבנית: {project.template.name}
+              {project.customerOrg.name} · {t.project.templatePrefix(project.template.name)}
             </div>
             <h1 className="text-2xl font-semibold text-slate-900">
               {project.name}
             </h1>
             <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
-              <span>אחראי: {project.owner.name}</span>
+              <span>{t.project.owner(project.owner.name)}</span>
               <span>·</span>
-              <span>תאריך יעד: {formatDate(project.targetDate)}</span>
+              <span>{t.project.targetDate(formatDate(project.targetDate, locale))}</span>
               <span>·</span>
-              <span>נוצר: {formatDate(project.createdAt)}</span>
+              <span>{t.project.created(formatDate(project.createdAt, locale))}</span>
             </div>
           </div>
-          <ProjectStatusBadge status={project.status} />
+          <ProjectStatusBadge status={project.status} locale={locale} />
         </CardHeader>
         <CardBody className="space-y-3">
           <div className="flex items-center justify-between text-sm">
             <span className="text-slate-600">
-              {completed} מתוך {project.items.length} משימות הושלמו
+              {t.project.tasksCompletedOf(completed, project.items.length)}
             </span>
             <span className="font-medium text-slate-900">{pct}%</span>
           </div>
@@ -108,7 +111,7 @@ export default async function ProjectPage({
           {firstActionable && (
             <div className="mt-3 flex items-center justify-between rounded-lg border border-brand-200 bg-brand-50 px-4 py-3">
               <div>
-                <div className="text-xs text-brand-700">השלב הבא שלך</div>
+                <div className="text-xs text-brand-700">{t.project.nextStep}</div>
                 <div className="text-sm font-medium text-slate-900">
                   {firstActionable.templateItem.title}
                 </div>
@@ -117,8 +120,8 @@ export default async function ProjectPage({
                 href={`/projects/${project.id}/items/${firstActionable.id}`}
                 className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700"
               >
-                המשך
-                <ArrowLeft size={14} />
+                {t.common.continue}
+                <ForwardArrow size={14} />
               </Link>
             </div>
           )}
@@ -128,7 +131,7 @@ export default async function ProjectPage({
       <Card>
         <CardHeader>
           <h2 className="text-base font-semibold text-slate-900">
-            רשימת המשימות המודרכת
+            {t.project.guidedChecklist}
           </h2>
         </CardHeader>
         <ol className="divide-y divide-slate-100">
@@ -147,19 +150,19 @@ export default async function ProjectPage({
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-slate-400">
-                        שלב {idx + 1}
+                        {t.project.step(idx + 1)}
                       </span>
                       <span className="text-xs text-slate-400">·</span>
                       <span className="text-xs text-slate-500">
-                        {ITEM_KIND_LABEL[item.templateItem.kind]}
+                        {itemKindLabel(item.templateItem.kind, locale)}
                       </span>
                       {!canAct && (
                         <span
-                          title="נדרשת רמת הרשאה גבוהה יותר"
+                          title={t.project.requiresHigherRole}
                           className="inline-flex items-center gap-1 text-xs text-slate-400"
                         >
                           <Lock size={12} />
-                          לצפייה בלבד
+                          {t.project.viewOnly}
                         </span>
                       )}
                     </div>
@@ -172,20 +175,22 @@ export default async function ProjectPage({
                       </div>
                     )}
                     <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-slate-500">
-                      <ItemStatusBadge status={item.status} />
+                      <ItemStatusBadge status={item.status} locale={locale} />
                       {item.assignedTo && (
-                        <span>מוקצה ל-{item.assignedTo.name}</span>
+                        <span>{t.project.assignedTo(item.assignedTo.name)}</span>
                       )}
                       {item.completedBy && item.completedAt && (
                         <span>
-                          הושלם ע״י {item.completedBy.name} ב-
-                          {formatDate(item.completedAt)}
+                          {t.project.completedBy(
+                            item.completedBy.name,
+                            formatDate(item.completedAt, locale)
+                          )}
                         </span>
                       )}
                     </div>
                   </div>
                   <div className="hidden text-xs text-slate-400 sm:block">
-                    {STATUS_LABEL[item.status]}
+                    {statusLabel(item.status, locale)}
                   </div>
                 </Link>
               </li>

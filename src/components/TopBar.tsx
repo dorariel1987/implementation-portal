@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import { LogOut, ShieldCheck } from 'lucide-react';
-import { ROLE_LABEL_HE } from '@/lib/format';
+import { roleLabel } from '@/lib/format';
 import { canAccessAdmin } from '@/lib/rbac';
+import { getDictionary } from '@/lib/i18n/dictionaries';
+import type { Locale } from '@/lib/i18n/config';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 interface Props {
   user: {
@@ -10,9 +13,11 @@ interface Props {
     role: string;
     organization: { name: string };
   };
+  locale: Locale;
 }
 
-export function TopBar({ user }: Props) {
+export function TopBar({ user, locale }: Props) {
+  const t = getDictionary(locale);
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-6">
@@ -24,29 +29,30 @@ export function TopBar({ user }: Props) {
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-white">
               IP
             </span>
-            <span>Implementation Portal</span>
+            <span>{t.common.appName}</span>
           </Link>
           <nav className="hidden items-center gap-1 md:flex">
-            <NavLink href="/dashboard">לוח בקרה</NavLink>
+            <NavLink href="/dashboard">{t.nav.dashboard}</NavLink>
             {canAccessAdmin(user.role) && (
               <>
-                <NavLink href="/admin/projects">פרויקטים</NavLink>
-                <NavLink href="/admin/users">משתמשים</NavLink>
-                <NavLink href="/admin/audit">יומן ביקורת</NavLink>
+                <NavLink href="/admin/projects">{t.nav.projects}</NavLink>
+                <NavLink href="/admin/users">{t.nav.users}</NavLink>
+                <NavLink href="/admin/audit">{t.nav.audit}</NavLink>
               </>
             )}
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          <div className="hidden text-right md:block">
+          <LanguageSwitcher current={locale} />
+          <div className="hidden text-end md:block">
             <div className="text-sm font-medium text-slate-900">{user.name}</div>
             <div className="text-xs text-slate-500">
-              {user.organization.name} · {ROLE_LABEL_HE[user.role] ?? user.role}
+              {user.organization.name} · {roleLabel(user.role, locale)}
             </div>
           </div>
           {canAccessAdmin(user.role) && (
             <span
-              title="חשבון ספק"
+              title={t.common.vendorAccount}
               className="hidden h-9 w-9 place-items-center rounded-full bg-brand-50 text-brand-700 md:grid"
             >
               <ShieldCheck size={16} />
@@ -58,7 +64,7 @@ export function TopBar({ user }: Props) {
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
             >
               <LogOut size={14} />
-              התנתק
+              {t.common.logout}
             </button>
           </form>
         </div>

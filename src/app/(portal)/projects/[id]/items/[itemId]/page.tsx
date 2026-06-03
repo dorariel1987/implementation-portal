@@ -3,15 +3,13 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Info, Lock } from 'lucide-react';
 import { db } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
-import { isVendor, meetsRoleRequirement, ROLE_LABEL } from '@/lib/rbac';
+import { isVendor, meetsRoleRequirement } from '@/lib/rbac';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { ItemStatusBadge } from '@/components/StatusBadge';
-import {
-  formatDateTime,
-  ITEM_KIND_LABEL,
-  STATUS_LABEL
-} from '@/lib/format';
+import { formatDateTime, itemKindLabel, roleLabel } from '@/lib/format';
+import { getServerDictionary } from '@/lib/i18n/server';
+import { direction } from '@/lib/i18n/config';
 import { ItemForm } from './ItemForm';
 
 export default async function ItemPage({
@@ -20,6 +18,11 @@ export default async function ItemPage({
   params: { id: string; itemId: string };
 }) {
   const user = await requireUser();
+  const { locale, t } = getServerDictionary();
+  const isRtl = direction(locale) === 'rtl';
+  const BackArrow = isRtl ? ArrowRight : ArrowLeft;
+  const ForwardArrow = isRtl ? ArrowLeft : ArrowRight;
+
   const item = await db.projectChecklistItem.findUnique({
     where: { id: params.itemId },
     include: {
@@ -58,23 +61,23 @@ export default async function ItemPage({
         href={`/projects/${item.projectId}`}
         className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900"
       >
-        <ArrowLeft size={14} />
-        חזרה לפרויקט {item.project.name}
+        <BackArrow size={14} />
+        {t.item.backToProject(item.project.name)}
       </Link>
 
       <Card>
         <CardHeader className="flex-col items-start gap-4 sm:flex-row">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2 text-xs text-slate-500">
-              <span>שלב {idx + 1} מתוך {allItems.length}</span>
+              <span>{t.item.stepOf(idx + 1, allItems.length)}</span>
               <span>·</span>
               <Badge className="border-slate-200 bg-slate-50 text-slate-600">
-                {ITEM_KIND_LABEL[item.templateItem.kind]}
+                {itemKindLabel(item.templateItem.kind, locale)}
               </Badge>
               {item.templateItem.requiredRole && (
                 <Badge className="border-amber-200 bg-amber-50 text-amber-700">
                   <Lock size={10} />
-                  {ROLE_LABEL[item.templateItem.requiredRole as keyof typeof ROLE_LABEL] ?? item.templateItem.requiredRole}
+                  {roleLabel(item.templateItem.requiredRole, locale)}
                 </Badge>
               )}
             </div>
@@ -82,7 +85,7 @@ export default async function ItemPage({
               {item.templateItem.title}
             </h1>
           </div>
-          <ItemStatusBadge status={item.status} />
+          <ItemStatusBadge status={item.status} locale={locale} />
         </CardHeader>
         <CardBody className="space-y-4">
           {item.templateItem.description && (
@@ -95,21 +98,23 @@ export default async function ItemPage({
           )}
 
           <div className="grid gap-3 text-xs text-slate-500 sm:grid-cols-3">
-            <Meta label="לקוח" value={item.project.customerOrg.name} />
+            <Meta label={t.item.client} value={item.project.customerOrg.name} />
             <Meta
-              label="מוקצה ל"
-              value={item.assignedTo?.name ?? 'לא שויך'}
+              label={t.item.assignedTo}
+              value={item.assignedTo?.name ?? t.item.notAssigned}
             />
             <Meta
-              label="עודכן לאחרונה"
-              value={formatDateTime(item.updatedAt)}
+              label={t.item.lastUpdated}
+              value={formatDateTime(item.updatedAt, locale)}
             />
           </div>
 
           {item.completedAt && item.completedBy && (
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-              הושלם ע״י <strong>{item.completedBy.name}</strong> בתאריך{' '}
-              {formatDateTime(item.completedAt)}.
+              {t.item.completedBanner(
+                item.completedBy.name,
+                formatDateTime(item.completedAt, locale)
+              )}
             </div>
           )}
 
@@ -120,6 +125,7 @@ export default async function ItemPage({
             currentPayload={item.payload}
             kind={item.templateItem.kind}
             canAct={canAct}
+            locale={locale}
           />
         </CardBody>
       </Card>
@@ -130,8 +136,8 @@ export default async function ItemPage({
             href={`/projects/${item.projectId}/items/${prev.id}`}
             className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"
           >
-            <ArrowRight size={14} />
-            השלב הקודם
+            <BackArrow size={14} />
+            {t.item.prevStep}
           </Link>
         ) : (
           <span />
@@ -141,8 +147,8 @@ export default async function ItemPage({
             href={`/projects/${item.projectId}/items/${next.id}`}
             className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900"
           >
-            השלב הבא
-            <ArrowLeft size={14} />
+            {t.item.nextStep}
+            <ForwardArrow size={14} />
           </Link>
         )}
       </div>

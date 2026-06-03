@@ -8,18 +8,26 @@ import { loginAction, type LoginState } from './actions';
 
 const initial: LoginState = {};
 
+interface Labels {
+  email: string;
+  password: string;
+  signIn: string;
+  signingIn: string;
+}
+
 interface Props {
   next?: string;
   initialEmail?: string;
+  labels: Labels;
 }
 
-export function LoginForm({ next, initialEmail }: Props) {
+export function LoginForm({ next, initialEmail, labels }: Props) {
   const [state, formAction] = useFormState(loginAction, initial);
 
   return (
     <form action={formAction} className="space-y-4">
       {next && <input type="hidden" name="next" value={next} />}
-      <FieldWrap label="כתובת מייל" htmlFor="email">
+      <FieldWrap label={labels.email} htmlFor="email">
         <TextInput
           id="email"
           name="email"
@@ -30,7 +38,7 @@ export function LoginForm({ next, initialEmail }: Props) {
           placeholder="name@company.com"
         />
       </FieldWrap>
-      <FieldWrap label="סיסמה" htmlFor="password">
+      <FieldWrap label={labels.password} htmlFor="password">
         <TextInput
           id="password"
           name="password"
@@ -45,17 +53,17 @@ export function LoginForm({ next, initialEmail }: Props) {
           {state.error}
         </div>
       )}
-      <SubmitButton />
+      <SubmitButton labels={labels} />
     </form>
   );
 }
 
-function SubmitButton() {
+function SubmitButton({ labels }: { labels: Labels }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" size="lg" className="w-full" disabled={pending}>
       <LogIn size={16} />
-      {pending ? 'מתחבר…' : 'כניסה'}
+      {pending ? labels.signingIn : labels.signIn}
     </Button>
   );
 }

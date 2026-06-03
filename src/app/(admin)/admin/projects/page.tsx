@@ -5,8 +5,10 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { ProjectStatusBadge } from '@/components/StatusBadge';
 import { Progress } from '@/components/ui/Progress';
 import { formatDate, progressPercent } from '@/lib/format';
+import { getServerDictionary } from '@/lib/i18n/server';
 
 export default async function AdminProjectsPage() {
+  const { locale, t } = getServerDictionary();
   const projects = await db.project.findMany({
     include: {
       customerOrg: true,
@@ -21,9 +23,11 @@ export default async function AdminProjectsPage() {
     <div className="space-y-6">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">פרויקטים</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            {t.adminProjects.title}
+          </h1>
           <p className="mt-1 text-sm text-slate-500">
-            ניהול פרויקטי הטמעה לכל הלקוחות.
+            {t.adminProjects.subtitle}
           </p>
         </div>
         <Link
@@ -31,28 +35,28 @@ export default async function AdminProjectsPage() {
           className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
         >
           <Plus size={14} />
-          פרויקט חדש
+          {t.adminProjects.newProject}
         </Link>
       </div>
 
       <Card>
         <CardHeader>
           <h2 className="text-base font-semibold text-slate-900">
-            כל הפרויקטים ({projects.length})
+            {t.adminProjects.allProjects(projects.length)}
           </h2>
         </CardHeader>
         <CardBody className="px-0 py-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-right text-sm">
+            <table className="w-full text-start text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <Th>שם</Th>
-                  <Th>לקוח</Th>
-                  <Th>תבנית</Th>
-                  <Th>אחראי</Th>
-                  <Th>סטטוס</Th>
-                  <Th>התקדמות</Th>
-                  <Th>תאריך יעד</Th>
+                  <Th>{t.adminProjects.colName}</Th>
+                  <Th>{t.adminProjects.colClient}</Th>
+                  <Th>{t.adminProjects.colTemplate}</Th>
+                  <Th>{t.adminProjects.colOwner}</Th>
+                  <Th>{t.adminProjects.colStatus}</Th>
+                  <Th>{t.adminProjects.colProgress}</Th>
+                  <Th>{t.adminProjects.colTargetDate}</Th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -75,7 +79,7 @@ export default async function AdminProjectsPage() {
                       <Td className="text-slate-500">{p.template.name}</Td>
                       <Td>{p.owner.name}</Td>
                       <Td>
-                        <ProjectStatusBadge status={p.status} />
+                        <ProjectStatusBadge status={p.status} locale={locale} />
                       </Td>
                       <Td>
                         <div className="flex items-center gap-2">
@@ -88,7 +92,7 @@ export default async function AdminProjectsPage() {
                         </div>
                       </Td>
                       <Td className="text-slate-500">
-                        {formatDate(p.targetDate)}
+                        {formatDate(p.targetDate, locale)}
                       </Td>
                     </tr>
                   );
@@ -99,7 +103,7 @@ export default async function AdminProjectsPage() {
                       colSpan={7}
                       className="px-6 py-12 text-center text-sm text-slate-500"
                     >
-                      עדיין לא נוצרו פרויקטים.
+                      {t.adminProjects.empty}
                     </td>
                   </tr>
                 )}

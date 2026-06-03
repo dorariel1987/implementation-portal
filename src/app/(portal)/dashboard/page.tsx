@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowLeft, ClipboardList, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ClipboardList, Sparkles } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { isVendor } from '@/lib/rbac';
@@ -7,6 +7,9 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Progress } from '@/components/ui/Progress';
 import { ProjectStatusBadge } from '@/components/StatusBadge';
 import { formatDate, progressPercent } from '@/lib/format';
+import { getServerDictionary } from '@/lib/i18n/server';
+import { direction } from '@/lib/i18n/config';
+import type { Dictionary } from '@/lib/i18n/dictionaries';
 
 export default async function DashboardPage({
   searchParams
@@ -14,6 +17,8 @@ export default async function DashboardPage({
   searchParams: { denied?: string };
 }) {
   const user = await requireUser();
+  const { locale, t } = getServerDictionary();
+  const ForwardArrow = direction(locale) === 'rtl' ? ArrowLeft : ArrowRight;
 
   const where = isVendor(user.role)
     ? {}
@@ -42,32 +47,32 @@ export default async function DashboardPage({
     <div className="space-y-8">
       {searchParams.denied && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          הגישה לאזור המבוקש נדחתה — חסרות הרשאות.
+          {t.dashboard.accessDenied}
         </div>
       )}
 
       <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">
-            שלום, {user.name.split(' ')[0]}.
+            {t.dashboard.greeting(user.name.split(' ')[0])}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
             {isVendor(user.role)
-              ? 'אלו הפרויקטים הפעילים במערכת. בחרו פרויקט כדי להמשיך בליווי.'
-              : 'אלו פרויקטי ההטמעה הפעילים שלכם. בחרו פרויקט כדי להמשיך.'}
+              ? t.dashboard.vendorIntro
+              : t.dashboard.customerIntro}
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:flex sm:gap-6">
-          <Stat label="פרויקטים" value={projects.length} />
+          <Stat label={t.dashboard.statProjects} value={projects.length} />
           <Stat
-            label="התקדמות כוללת"
+            label={t.dashboard.statTotalProgress}
             value={`${progressPercent(totals.completed, totals.total)}%`}
           />
         </div>
       </section>
 
       {projects.length === 0 ? (
-        <EmptyState canCreate={isVendor(user.role)} />
+        <EmptyState canCreate={isVendor(user.role)} t={t} />
       ) : (
         <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {projects.map((p) => {
@@ -88,12 +93,12 @@ export default async function DashboardPage({
                           {p.name}
                         </div>
                       </div>
-                      <ProjectStatusBadge status={p.status} />
+                      <ProjectStatusBadge status={p.status} locale={locale} />
                     </CardHeader>
                     <CardBody className="space-y-4">
                       <div className="flex items-center justify-between text-xs text-slate-500">
                         <span>
-                          {completed} / {p.items.length} משימות הושלמו
+                          {t.dashboard.tasksCompleted(completed, p.items.length)}
                         </span>
                         <span className="font-medium text-slate-700">
                           {pct}%
@@ -101,12 +106,12 @@ export default async function DashboardPage({
                       </div>
                       <Progress value={pct} />
                       <div className="flex items-center justify-between text-xs text-slate-500">
-                        <span>אחראי: {p.owner.name}</span>
-                        <span>יעד: {formatDate(p.targetDate)}</span>
+                        <span>{t.dashboard.owner(p.owner.name)}</span>
+                        <span>{t.dashboard.target(formatDate(p.targetDate, locale))}</span>
                       </div>
                       <div className="flex items-center justify-end gap-1 text-sm font-medium text-brand-700">
-                        המשך
-                        <ArrowLeft size={14} />
+                        {t.common.continue}
+                        <ForwardArrow size={14} />
                       </div>
                     </CardBody>
                   </Card>
@@ -129,7 +134,13 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-function EmptyState({ canCreate }: { canCreate: boolean }) {
+function EmptyState({
+  canCreate,
+  t
+}: {
+  canCreate: boolean;
+  t: Dictionary;
+}) {
   return (
     <Card>
       <CardBody className="flex flex-col items-center gap-4 py-16 text-center">
@@ -138,12 +149,10 @@ function EmptyState({ canCreate }: { canCreate: boolean }) {
         </span>
         <div>
           <h2 className="text-lg font-semibold text-slate-900">
-            אין עדיין פרויקטים
+            {t.dashboard.emptyTitle}
           </h2>
           <p className="mt-1 max-w-md text-sm text-slate-500">
-            {canCreate
-              ? 'צרו פרויקט הטמעה חדש מתבנית checklist קיימת והזמינו את הלקוח.'
-              : 'ברגע שצוות ההטמעה ישייך אליכם פרויקט, הוא יופיע כאן.'}
+            {canCreate ? t.dashboard.emptyVendor : t.dashboard.emptyCustomer}
           </p>
         </div>
         {canCreate && (
@@ -152,7 +161,7 @@ function EmptyState({ canCreate }: { canCreate: boolean }) {
             className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >
             <Sparkles size={14} />
-            צור פרויקט חדש
+            {t.dashboard.createNew}
           </Link>
         )}
       </CardBody>

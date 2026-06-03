@@ -6,6 +6,22 @@
 
 ---
 
+## צילומי מסך
+
+| התחברות (אנגלית) | לוח בקרה (אנגלית) |
+|---|---|
+| ![Login](docs/screenshots/login-en.png) | ![Dashboard](docs/screenshots/dashboard-en.png) |
+
+| פרויקט מודרך | יומן ביקורת |
+|---|---|
+| ![Project](docs/screenshots/project-en.png) | ![Audit log](docs/screenshots/audit-en.png) |
+
+| ניהול פרויקטים | לוח בקרה בעברית (RTL) |
+|---|---|
+| ![Admin projects](docs/screenshots/admin-projects-en.png) | ![Hebrew dashboard](docs/screenshots/dashboard-he.png) |
+
+---
+
 ## תכונות עיקריות
 
 - **תבניות checklist לשימוש חוזר** — צרו playbook אחד והפעילו אותו על כל לקוח חדש.
@@ -15,7 +31,7 @@
 - **REST API מלא** תחת `/api/v1/*` — auth, projects, items, templates, users, audit. תמיכה ב-Bearer tokens ובקוקיז במקביל.
 - **Audit trail מלא** — לוגיני success/failure, יצירת פרויקטים, שינויי סטטוס, גישה שנדחתה — כולל IP, user-agent, ו-`via=rest|web`.
 - **תפעול אוטומטי** — פרויקט עובר ל-`ACTIVE` ברגע שהשלב הראשון מתחיל, ול-`COMPLETED` כשכל המשימות סגורות.
-- **UI מודרני בעברית עם RTL מלא** — Tailwind, lucide-react, ועיצוב מהוקצע.
+- **UI דו-לשוני (אנגלית + עברית)** — בורר שפה מובנה, אנגלית כברירת מחדל, החלפה ל-LTR/RTL אוטומטית (כולל אייקוני ניווט ופורמט תאריכים לפי שפה). Tailwind, lucide-react, ועיצוב מהוקצע.
 
 ---
 
@@ -168,6 +184,18 @@ curl -s 'http://localhost:3000/api/v1/audit?limit=50' \
 
 ---
 
+## שפות (i18n)
+
+האפליקציה דו-לשונית — **אנגלית (ברירת מחדל) ועברית**:
+
+- בורר שפה (`English / עברית`) בסרגל העליון ובמסך ההתחברות. הבחירה נשמרת ב-cookie (`locale`) למשך שנה.
+- כל הטקסטים מרוכזים במילונים תחת `src/lib/i18n/` (`config.ts`, `dictionaries.ts`, `server.ts`). אין מחרוזות קשיחות בקומפוננטות.
+- `<html lang dir>` נקבע דינמית לפי השפה — **LTR לאנגלית, RTL לעברית**. אייקוני ניווט (קדימה/אחורה) ופורמט תאריכים (`Intl`) מתאימים את עצמם לכיוון ולשפה.
+- Server Components קוראים את השפה דרך `getServerDictionary()`; Client Components מקבלים `locale` ב-props ומשתמשים ב-`getDictionary(locale)` (נתונים טהורים, ללא תלות שרת).
+- הוספת שפה חדשה: הרחבת `Locale` ב-`config.ts` והוספת מילון ל-`dictionaries.ts`.
+
+---
+
 ## בדיקות (Tests)
 
 חבילת בדיקות **Vitest** ממוקדת בלוגיקה הקריטית — 97 בדיקות ב-5 קבצים תחת `src/lib/__tests__/`:
@@ -264,7 +292,7 @@ implementation-portal/
 │   │   │       └── _serializers.ts
 │   │   ├── (portal)/           # אזור הלקוח
 │   │   └── (admin)/            # אזור הספק
-│   ├── components/             # TopBar, StatusBadge, ui/*
+│   ├── components/             # TopBar, StatusBadge, LanguageSwitcher, ui/*
 │   ├── lib/
 │   │   ├── db.ts               # Prisma singleton
 │   │   ├── auth.ts             # JWT + cookies + Bearer
@@ -272,7 +300,8 @@ implementation-portal/
 │   │   ├── audit.ts            # recordAudit()
 │   │   ├── api.ts              # ★ REST helpers (handle, jsonOk, parseJsonBody, requireApiUser)
 │   │   ├── validation.ts       # Zod schemas
-│   │   ├── format.ts           # תוויות בעברית
+│   │   ├── format.ts           # תוויות + פורמט תאריכים תלוי-שפה
+│   │   ├── i18n/               # ★ דו-לשוניות: config, dictionaries (en/he), server helpers
 │   │   └── types.ts            # TypeScript unions במקום DB enums
 │   └── middleware.ts           # מעביר API דרך, מגן על דפי SSR
 ├── tailwind.config.ts

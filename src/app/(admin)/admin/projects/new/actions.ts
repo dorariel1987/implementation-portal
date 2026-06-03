@@ -7,6 +7,7 @@ import { requireUser } from '@/lib/auth';
 import { recordAudit } from '@/lib/audit';
 import { canAccessAdmin } from '@/lib/rbac';
 import { createProjectSchema } from '@/lib/validation';
+import { getServerDictionary } from '@/lib/i18n/server';
 
 export type CreateProjectState = { error?: string };
 
@@ -15,8 +16,9 @@ export async function createProject(
   formData: FormData
 ): Promise<CreateProjectState> {
   const user = await requireUser();
+  const { t } = getServerDictionary();
   if (!canAccessAdmin(user.role)) {
-    return { error: 'אין לכם הרשאה ליצור פרויקטים' };
+    return { error: t.newProject.noPermission };
   }
 
   let parsed;
@@ -30,7 +32,7 @@ export async function createProject(
     });
   } catch (err) {
     if (err instanceof z.ZodError) {
-      return { error: err.errors[0]?.message ?? 'נתונים לא תקינים' };
+      return { error: t.newProject.invalidData };
     }
     throw err;
   }
@@ -39,7 +41,7 @@ export async function createProject(
     where: { id: parsed.templateId },
     include: { items: { orderBy: { order: 'asc' } } }
   });
-  if (!template) return { error: 'התבנית לא נמצאה' };
+  if (!template) return { error: t.newProject.templateNotFound };
 
   const project = await db.project.create({
     data: {

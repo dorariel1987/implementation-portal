@@ -4,7 +4,9 @@ import { useFormState, useFormStatus } from 'react-dom';
 import { Save } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { FieldWrap, Select, TextArea } from '@/components/ui/Field';
-import { STATUS_LABEL } from '@/lib/format';
+import { statusLabel } from '@/lib/format';
+import { getDictionary } from '@/lib/i18n/dictionaries';
+import type { Locale } from '@/lib/i18n/config';
 import { updateItemStatus, type ItemActionState } from './actions';
 import { ITEM_STATUSES } from '@/lib/types';
 
@@ -17,6 +19,7 @@ interface Props {
   currentPayload: string | null;
   kind: string;
   canAct: boolean;
+  locale: Locale;
 }
 
 export function ItemForm({
@@ -25,15 +28,17 @@ export function ItemForm({
   currentNotes,
   currentPayload,
   kind,
-  canAct
+  canAct,
+  locale
 }: Props) {
   const [state, formAction] = useFormState(updateItemStatus, initial);
+  const t = getDictionary(locale);
 
   return (
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="itemId" value={itemId} />
 
-      <FieldWrap label="סטטוס" htmlFor="status">
+      <FieldWrap label={t.item.statusLabel} htmlFor="status">
         <Select
           id="status"
           name="status"
@@ -42,7 +47,7 @@ export function ItemForm({
         >
           {ITEM_STATUSES.map((s) => (
             <option key={s} value={s}>
-              {STATUS_LABEL[s] ?? s}
+              {statusLabel(s, locale)}
             </option>
           ))}
         </Select>
@@ -50,13 +55,9 @@ export function ItemForm({
 
       {(kind === 'FORM' || kind === 'UPLOAD') && (
         <FieldWrap
-          label={kind === 'FORM' ? 'תוכן הטופס' : 'קישור / שם קובץ'}
+          label={kind === 'FORM' ? t.item.formContent : t.item.fileLink}
           htmlFor="payload"
-          hint={
-            kind === 'FORM'
-              ? 'מלאו כאן את המידע שנדרש לשלב הזה (פורמט חופשי או JSON).'
-              : 'במצב דמו: הדביקו URL לקובץ או שם קובץ.'
-          }
+          hint={kind === 'FORM' ? t.item.formHint : t.item.uploadHint}
         >
           <TextArea
             id="payload"
@@ -72,13 +73,13 @@ export function ItemForm({
         </FieldWrap>
       )}
 
-      <FieldWrap label="הערות" htmlFor="notes" hint="מתועד ב-audit trail.">
+      <FieldWrap label={t.item.notes} htmlFor="notes" hint={t.item.notesHint}>
         <TextArea
           id="notes"
           name="notes"
           defaultValue={currentNotes ?? ''}
           disabled={!canAct}
-          placeholder="הוסיפו הערה אופציונלית…"
+          placeholder={t.item.notesPlaceholder}
         />
       </FieldWrap>
 
@@ -94,23 +95,27 @@ export function ItemForm({
       )}
 
       <div className="flex flex-wrap items-center gap-3 pt-2">
-        <SubmitButton canAct={canAct} />
+        <SubmitButton canAct={canAct} labels={{ save: t.item.save, saving: t.item.saving }} />
         {!canAct && (
-          <span className="text-xs text-slate-500">
-            אין לכם הרשאה לעדכן שלב זה.
-          </span>
+          <span className="text-xs text-slate-500">{t.item.noPermission}</span>
         )}
       </div>
     </form>
   );
 }
 
-function SubmitButton({ canAct }: { canAct: boolean }) {
+function SubmitButton({
+  canAct,
+  labels
+}: {
+  canAct: boolean;
+  labels: { save: string; saving: string };
+}) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={!canAct || pending}>
       <Save size={14} />
-      {pending ? 'שומר…' : 'שמור והמשך'}
+      {pending ? labels.saving : labels.save}
     </Button>
   );
 }

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { authenticateCredentials } from '@/lib/authenticate';
 import { loginSchema } from '@/lib/validation';
+import { getServerDictionary } from '@/lib/i18n/server';
 
 export type LoginState = {
   error?: string;
@@ -14,6 +15,8 @@ export async function loginAction(
   _prev: LoginState,
   formData: FormData
 ): Promise<LoginState> {
+  const { t } = getServerDictionary();
+
   const raw = {
     email: String(formData.get('email') ?? '').trim().toLowerCase(),
     password: String(formData.get('password') ?? '')
@@ -24,10 +27,7 @@ export async function loginAction(
     parsed = loginSchema.parse(raw);
   } catch (err) {
     if (err instanceof z.ZodError) {
-      return {
-        error: err.errors[0]?.message ?? 'נתונים לא תקינים',
-        email: raw.email
-      };
+      return { error: t.login.invalidData, email: raw.email };
     }
     throw err;
   }
@@ -37,7 +37,11 @@ export async function loginAction(
   });
 
   if (!result.ok) {
-    return { error: result.message, email: parsed.email };
+    const message =
+      result.code === 'RATE_LIMITED'
+        ? t.login.errorRateLimited
+        : t.login.errorInvalidCredentials;
+    return { error: message, email: parsed.email };
   }
 
   const next = String(formData.get('next') ?? '/dashboard');

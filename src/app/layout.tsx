@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { direction } from '@/lib/i18n/config';
+import { getServerDictionary } from '@/lib/i18n/server';
 
 export const metadata: Metadata = {
   title: 'Implementation Portal',
   description:
-    'פורטל onboarding ללקוחות שהופך checklists של הטמעה לחוויית מוצר מודרכת.'
+    'Customer onboarding portal that turns implementation checklists into a guided product experience.'
 };
 
 export default function RootLayout({
@@ -12,8 +14,9 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const { locale } = getServerDictionary();
   return (
-    <html lang="he" dir="rtl">
+    <html lang={locale} dir={direction(locale)}>
       <body>{children}</body>
     </html>
   );

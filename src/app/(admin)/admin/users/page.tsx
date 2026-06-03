@@ -1,9 +1,11 @@
 import { db } from '@/lib/db';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { ROLE_LABEL_HE, formatDateTime } from '@/lib/format';
+import { roleLabel, formatDateTime } from '@/lib/format';
+import { getServerDictionary } from '@/lib/i18n/server';
 
 export default async function AdminUsersPage() {
+  const { locale, t } = getServerDictionary();
   const users = await db.user.findMany({
     include: { organization: true },
     orderBy: [{ organization: { name: 'asc' } }, { name: 'asc' }]
@@ -12,29 +14,31 @@ export default async function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">משתמשים</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          כל החשבונות הקיימים — של ספק ושל לקוחות.
-        </p>
+        <h1 className="text-2xl font-semibold text-slate-900">
+          {t.adminUsers.title}
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">{t.adminUsers.subtitle}</p>
       </div>
 
       <Card>
         <CardHeader>
           <h2 className="text-base font-semibold text-slate-900">
-            סך הכל {users.length} משתמשים
+            {t.adminUsers.totalUsers(users.length)}
           </h2>
         </CardHeader>
         <CardBody className="px-0 py-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-right text-sm">
+            <table className="w-full text-start text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-6 py-3 font-medium">שם</th>
-                  <th className="px-6 py-3 font-medium">מייל</th>
-                  <th className="px-6 py-3 font-medium">ארגון</th>
-                  <th className="px-6 py-3 font-medium">תפקיד</th>
-                  <th className="px-6 py-3 font-medium">סטטוס</th>
-                  <th className="px-6 py-3 font-medium">כניסה אחרונה</th>
+                  <th className="px-6 py-3 font-medium">{t.adminUsers.colName}</th>
+                  <th className="px-6 py-3 font-medium">{t.adminUsers.colEmail}</th>
+                  <th className="px-6 py-3 font-medium">{t.adminUsers.colOrg}</th>
+                  <th className="px-6 py-3 font-medium">{t.adminUsers.colRole}</th>
+                  <th className="px-6 py-3 font-medium">{t.adminUsers.colStatus}</th>
+                  <th className="px-6 py-3 font-medium">
+                    {t.adminUsers.colLastLogin}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -47,12 +51,16 @@ export default async function AdminUsersPage() {
                     <td className="px-6 py-3 text-slate-600">
                       {u.organization.name}
                       <span className="ms-2 text-xs text-slate-400">
-                        ({u.organization.type === 'VENDOR' ? 'ספק' : 'לקוח'})
+                        (
+                        {u.organization.type === 'VENDOR'
+                          ? t.adminUsers.vendor
+                          : t.adminUsers.customer}
+                        )
                       </span>
                     </td>
                     <td className="px-6 py-3">
                       <Badge className="border-brand-200 bg-brand-50 text-brand-700">
-                        {ROLE_LABEL_HE[u.role]}
+                        {roleLabel(u.role, locale)}
                       </Badge>
                     </td>
                     <td className="px-6 py-3">
@@ -63,11 +71,11 @@ export default async function AdminUsersPage() {
                             : 'border-rose-200 bg-rose-50 text-rose-700'
                         }
                       >
-                        {u.isActive ? 'פעיל' : 'מושבת'}
+                        {u.isActive ? t.adminUsers.active : t.adminUsers.inactive}
                       </Badge>
                     </td>
                     <td className="px-6 py-3 text-slate-500">
-                      {formatDateTime(u.lastLoginAt)}
+                      {formatDateTime(u.lastLoginAt, locale)}
                     </td>
                   </tr>
                 ))}

@@ -8,6 +8,7 @@ import { requireUser } from '@/lib/auth';
 import { recordAudit } from '@/lib/audit';
 import { isVendor, meetsRoleRequirement } from '@/lib/rbac';
 import { updateItemStatusSchema } from '@/lib/validation';
+import { getServerDictionary } from '@/lib/i18n/server';
 
 export type ItemActionState = { error?: string; success?: string };
 
@@ -16,6 +17,7 @@ export async function updateItemStatus(
   formData: FormData
 ): Promise<ItemActionState> {
   const user = await requireUser();
+  const { t } = getServerDictionary();
 
   let parsed;
   try {
@@ -27,7 +29,7 @@ export async function updateItemStatus(
     });
   } catch (err) {
     if (err instanceof z.ZodError) {
-      return { error: err.errors[0]?.message ?? 'נתונים לא תקינים' };
+      return { error: t.item.invalidData };
     }
     throw err;
   }
@@ -37,7 +39,7 @@ export async function updateItemStatus(
     include: { project: true, templateItem: true }
   });
 
-  if (!item) return { error: 'המשימה לא נמצאה' };
+  if (!item) return { error: t.item.notFound };
 
   // Tenancy & RBAC
   if (
@@ -52,7 +54,7 @@ export async function updateItemStatus(
       resourceId: item.id,
       metadata: { reason: 'cross_tenant' }
     });
-    return { error: 'אין לכם גישה לפרויקט הזה' };
+    return { error: t.item.noAccess };
   }
 
   if (!meetsRoleRequirement(user.role, item.templateItem.requiredRole)) {
@@ -64,7 +66,7 @@ export async function updateItemStatus(
       resourceId: item.id,
       metadata: { reason: 'role_too_low', required: item.templateItem.requiredRole }
     });
-    return { error: 'נדרשת רמת הרשאה גבוהה יותר לשלב זה' };
+    return { error: t.item.requiresHigherRole };
   }
 
   const now = new Date();
@@ -152,5 +154,5 @@ export async function updateItemStatus(
     redirect(`/projects/${item.projectId}`);
   }
 
-  return { success: 'הסטטוס עודכן' };
+  return { success: t.item.statusUpdated };
 }
